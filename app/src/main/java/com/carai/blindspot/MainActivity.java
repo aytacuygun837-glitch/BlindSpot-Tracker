@@ -1,4 +1,4 @@
-package com.carai/blindspot;
+package com.carai.blindspot;
 
 import android.Manifest;
 import android.content.Intent;
