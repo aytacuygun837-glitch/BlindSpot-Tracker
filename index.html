@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Araç Sentry Güvenlik</title>
+    <title>Araç Sentry Canlı İzleme</title>
 
     <!-- Firebase JS SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -20,38 +20,37 @@
             display: flex;
             flex-direction: column;
             height: 100vh;
-            padding: 20px;
+            padding: 15px;
         }
         .header {
             text-align: center;
-            padding: 15px;
+            padding: 12px;
             background: #1a1a1a;
             border-radius: 12px;
-            margin-bottom: 15px;
+            margin-bottom: 12px;
             border: 1px solid #333;
         }
-        .system-status { font-size: 18px; font-weight: bold; color: #00e676; }
-        .last-update { font-size: 12px; color: #888; margin-top: 5px; }
+        .system-status { font-size: 16px; font-weight: bold; color: #00e676; }
+        .last-update { font-size: 11px; color: #888; margin-top: 4px; }
         .grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 12px;
+            gap: 10px;
             flex: 1;
         }
         .card {
             background: #1e1e1e;
-            border-radius: 14px;
-            padding: 15px;
+            border-radius: 12px;
+            padding: 8px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            text-align: center;
+            justify-content: space-between;
             border: 2px solid #2a2a2a;
-            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
         }
         .card.active {
-            background: #3e1010;
             border-color: #ff5252;
             animation: blink 1s infinite;
         }
@@ -60,43 +59,62 @@
             50% { border-color: #b71c1c; }
             100% { border-color: #ff5252; }
         }
-        .card-title { font-size: 14px; color: #aaa; margin-bottom: 8px; }
-        .card-state { font-size: 16px; font-weight: bold; }
+        .card-title { font-size: 12px; color: #aaa; margin-bottom: 4px; font-weight: bold; }
+        .video-box {
+            width: 100%;
+            height: 120px;
+            background-color: #000;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #555;
+            font-size: 12px;
+            object-fit: cover;
+        }
+        .card-state { font-size: 14px; font-weight: bold; margin-top: 6px; }
         .btn-audio {
-            margin-top: 15px;
-            padding: 16px;
+            margin-top: 12px;
+            padding: 14px;
             background: linear-gradient(135deg, #2979ff, #1565c0);
             color: white;
             border: none;
             border-radius: 12px;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: bold;
-            box-shadow: 0 4px 12px rgba(41, 121, 255, 0.3);
         }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <div class="system-status" id="sysStatus">SENTRY MODU: AKTİF</div>
+        <div class="system-status" id="sysStatus">SENTRY CANLI MOD: AKTİF</div>
         <div class="last-update" id="lastUpdate">Son Kontrol: Şimdi</div>
     </div>
 
     <div class="grid">
+        <!-- Ön Kamera -->
         <div class="card" id="camFront">
             <div class="card-title">ÖN KAMERA</div>
+            <img id="streamFront" class="video-box" src="" alt="Sinyal Yok" />
             <div class="card-state">TEMİZ</div>
         </div>
+        <!-- Arka Kamera -->
         <div class="card" id="camRear">
             <div class="card-title">ARKA KAMERA</div>
+            <img id="streamRear" class="video-box" src="" alt="Sinyal Yok" />
             <div class="card-state">TEMİZ</div>
         </div>
+        <!-- Sol Kamera -->
         <div class="card" id="camLeft">
             <div class="card-title">SOL KAMERA</div>
+            <img id="streamLeft" class="video-box" src="" alt="Sinyal Yok" />
             <div class="card-state">TEMİZ</div>
         </div>
+        <!-- Sağ Kamera -->
         <div class="card" id="camRight">
             <div class="card-title">SAĞ KAMERA</div>
+            <img id="streamRight" class="video-box" src="" alt="Sinyal Yok" />
             <div class="card-state">TEMİZ</div>
         </div>
     </div>
@@ -124,14 +142,19 @@
 
         function enableAudio() {
             audioAllowed = true;
-            speak("Sentry güvenlik sistemi aktif. Araç izleniyor.");
+            speak("Sentry canlı izleme aktif.");
             document.querySelector('.btn-audio').style.display = 'none';
         }
 
-        function updateCard(id, state) {
+        function updateCard(id, streamImgId, state, streamUrl) {
             const el = document.getElementById(id);
             const stateEl = el.querySelector('.card-state');
+            const imgEl = document.getElementById(streamImgId);
             
+            if (streamUrl) {
+                imgEl.src = streamUrl;
+            }
+
             if (state) {
                 el.classList.add('active');
                 stateEl.innerText = "HAREKET!";
@@ -152,15 +175,16 @@
                 const left = data.left_motion || false;
                 const right = data.right_motion || false;
 
-                updateCard('camFront', front);
-                updateCard('camRear', rear);
-                updateCard('camLeft', left);
-                updateCard('camRight', right);
+                // Firebase'e kamera yayın URL'leri yazılırsa doğrudan görüntüler çekilir
+                updateCard('camFront', 'streamFront', front, data.front_url);
+                updateCard('camRear', 'streamRear', rear, data.rear_url);
+                updateCard('camLeft', 'streamLeft', left, data.left_url);
+                updateCard('camRight', 'streamRight', right, data.right_url);
 
                 if (front && !lastState.front) speak("Uyarı! Aracın önünde hareket algılandı.");
                 if (rear && !lastState.rear) speak("Uyarı! Aracın arkasında hareket algılandı.");
-                if (left && !lastState.left) speak("Uyarı! Aracın solunda yaklaşan biri var.");
-                if (right && !lastState.right) speak("Uyarı! Aracın sağında hareket tespit edildi.");
+                if (left && !lastState.left) speak("Uyarı! Aracın solunda hareket algılandı.");
+                if (right && !lastState.right) speak("Uyarı! Aracın sağında hareket algılandı.");
 
                 lastState = { front, rear, left, right };
                 document.getElementById('lastUpdate').innerText = "Son Kontrol: " + new Date().toLocaleTimeString();
