@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Araç Sentry Güvenlik</title>
+
+    <!-- Firebase JS SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #0d0d0d;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            padding: 15px;
+            background: #1a1a1a;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            border: 1px solid #333;
+        }
+        .system-status { font-size: 18px; font-weight: bold; color: #00e676; }
+        .last-update { font-size: 12px; color: #888; margin-top: 5px; }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            flex: 1;
+        }
+        .card {
+            background: #1e1e1e;
+            border-radius: 14px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            border: 2px solid #2a2a2a;
+            transition: all 0.3s ease;
+        }
+        .card.active {
+            background: #3e1010;
+            border-color: #ff5252;
+            animation: blink 1s infinite;
+        }
+        @keyframes blink {
+            0% { border-color: #ff5252; }
+            50% { border-color: #b71c1c; }
+            100% { border-color: #ff5252; }
+        }
+        .card-title { font-size: 14px; color: #aaa; margin-bottom: 8px; }
+        .card-state { font-size: 16px; font-weight: bold; }
+        .btn-audio {
+            margin-top: 15px;
+            padding: 16px;
+            background: linear-gradient(135deg, #2979ff, #1565c0);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            box-shadow: 0 4px 12px rgba(41, 121, 255, 0.3);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="system-status" id="sysStatus">SENTRY MODU: AKTİF</div>
+        <div class="last-update" id="lastUpdate">Son Kontrol: Şimdi</div>
+    </div>
+
+    <div class="grid">
+        <div class="card" id="camFront">
+            <div class="card-title">ÖN KAMERA</div>
+            <div class="card-state">TEMİZ</div>
+        </div>
+        <div class="card" id="camRear">
+            <div class="card-title">ARKA KAMERA</div>
+            <div class="card-state">TEMİZ</div>
+        </div>
+        <div class="card" id="camLeft">
+            <div class="card-title">SOL KAMERA</div>
+            <div class="card-state">TEMİZ</div>
+        </div>
+        <div class="card" id="camRight">
+            <div class="card-title">SAĞ KAMERA</div>
+            <div class="card-state">TEMİZ</div>
+        </div>
+    </div>
+
+    <button class="btn-audio" onclick="enableAudio()">SENTRY SESLİ UYARIYI BAŞLAT</button>
+
+    <script>
+        const firebaseConfig = {
+            databaseURL: "https://blindspot-tracker-default-rtdb.firebaseio.com"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const dbRef = firebase.database().ref("sentry_system");
+
+        let audioAllowed = false;
+        let lastState = { front: false, rear: false, left: false, right: false };
+
+        function speak(text) {
+            if (!audioAllowed) return;
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'tr-TR';
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function enableAudio() {
+            audioAllowed = true;
+            speak("Sentry güvenlik sistemi aktif. Araç izleniyor.");
+            document.querySelector('.btn-audio').style.display = 'none';
+        }
+
+        function updateCard(id, state) {
+            const el = document.getElementById(id);
+            const stateEl = el.querySelector('.card-state');
+            
+            if (state) {
+                el.classList.add('active');
+                stateEl.innerText = "HAREKET!";
+                stateEl.style.color = "#ff5252";
+            } else {
+                el.classList.remove('active');
+                stateEl.innerText = "TEMİZ";
+                stateEl.style.color = "#00e676";
+            }
+        }
+
+        dbRef.on('value', (snapshot) => {
+            if (snapshot.exists()) {
+                const data = snapshot.val();
+                
+                const front = data.front_motion || false;
+                const rear = data.rear_motion || false;
+                const left = data.left_motion || false;
+                const right = data.right_motion || false;
+
+                updateCard('camFront', front);
+                updateCard('camRear', rear);
+                updateCard('camLeft', left);
+                updateCard('camRight', right);
+
+                if (front && !lastState.front) speak("Uyarı! Aracın önünde hareket algılandı.");
+                if (rear && !lastState.rear) speak("Uyarı! Aracın arkasında hareket algılandı.");
+                if (left && !lastState.left) speak("Uyarı! Aracın solunda yaklaşan biri var.");
+                if (right && !lastState.right) speak("Uyarı! Aracın sağında hareket tespit edildi.");
+
+                lastState = { front, rear, left, right };
+                document.getElementById('lastUpdate').innerText = "Son Kontrol: " + new Date().toLocaleTimeString();
+            }
+        });
+    </script>
+</body>
+</html>
