@@ -69,10 +69,10 @@
             align-items: center;
             justify-content: center;
             color: #555;
-            font-size: 12px;
+            font-size: 11px;
             object-fit: cover;
         }
-        .card-state { font-size: 14px; font-weight: bold; margin-top: 6px; }
+        .card-state { font-size: 13px; font-weight: bold; margin-top: 6px; }
         .btn-audio {
             margin-top: 12px;
             padding: 14px;
@@ -82,6 +82,7 @@
             border-radius: 12px;
             font-size: 15px;
             font-weight: bold;
+            box-shadow: 0 4px 12px rgba(41, 121, 255, 0.3);
         }
     </style>
 </head>
@@ -89,7 +90,7 @@
 
     <div class="header">
         <div class="system-status" id="sysStatus">SENTRY CANLI MOD: AKTİF</div>
-        <div class="last-update" id="lastUpdate">Son Kontrol: Şimdi</div>
+        <div class="last-update" id="lastUpdate">Son Kontrol: Bağlanıyor...</div>
     </div>
 
     <div class="grid">
@@ -122,8 +123,9 @@
     <button class="btn-audio" onclick="enableAudio()">SENTRY SESLİ UYARIYI BAŞLAT</button>
 
     <script>
+        // Sizin Firebase Proje Bağlantınız
         const firebaseConfig = {
-            databaseURL: "https://blindspot-tracker-default-rtdb.firebaseio.com"
+            databaseURL: "https://karsilama-default-rtdb.firebaseio.com"
         };
         
         firebase.initializeApp(firebaseConfig);
@@ -142,7 +144,7 @@
 
         function enableAudio() {
             audioAllowed = true;
-            speak("Sentry canlı izleme aktif.");
+            speak("Sentry güvenlik sistemi aktif. Araç izleniyor.");
             document.querySelector('.btn-audio').style.display = 'none';
         }
 
@@ -151,7 +153,7 @@
             const stateEl = el.querySelector('.card-state');
             const imgEl = document.getElementById(streamImgId);
             
-            if (streamUrl) {
+            if (streamUrl && imgEl.src !== streamUrl) {
                 imgEl.src = streamUrl;
             }
 
@@ -175,12 +177,13 @@
                 const left = data.left_motion || false;
                 const right = data.right_motion || false;
 
-                // Firebase'e kamera yayın URL'leri yazılırsa doğrudan görüntüler çekilir
+                // Kamera Görselleri ve Hareket Durumları
                 updateCard('camFront', 'streamFront', front, data.front_url);
                 updateCard('camRear', 'streamRear', rear, data.rear_url);
                 updateCard('camLeft', 'streamLeft', left, data.left_url);
                 updateCard('camRight', 'streamRight', right, data.right_url);
 
+                // Sesli Uyarı İkazları
                 if (front && !lastState.front) speak("Uyarı! Aracın önünde hareket algılandı.");
                 if (rear && !lastState.rear) speak("Uyarı! Aracın arkasında hareket algılandı.");
                 if (left && !lastState.left) speak("Uyarı! Aracın solunda hareket algılandı.");
