@@ -32,16 +32,20 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        // Arayüz oluşturma (Giriş/Login ekranı kaldırıldı)
         statusTextView = new TextView(this);
         statusTextView.setTextSize(18);
         statusTextView.setPadding(32, 32, 32, 32);
-        statusTextView.setText("Sentry Mode Başlatılıyor...");
+        statusTextView.setText("Sentry Mode Başlatılıyor...\nLütfen İzin Verin.");
         setContentView(statusTextView);
 
+        // Firebase bağlantısını doğrula ve doğrudan DB düğümüne bağlan
         mDatabase = FirebaseDatabase.getInstance("https://karsilama-default-rtdb.firebaseio.com").getReference("sentry_system");
 
+        // Kayıt klasörünü doğrudan hazırla
         initStorageFolder();
 
+        // İzin kontrolü yap ve doğrudan servisi başlat
         if (checkAndRequestPermissions()) {
             startSentrySystem();
         }
@@ -100,13 +104,22 @@ public class MainActivity extends AppCompatActivity {
             if (granted) {
                 startSentrySystem();
             } else {
-                Toast.makeText(this, "Sentry Mode için gerekli izinler verilmedi!", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, "Sentry Mode için kamera ve depolama izinleri gereklidir!", Toast.LENGTH_LONG).show();
                 statusTextView.setText("HATA: İzinler verilmedi.");
             }
         }
     }
 
     private void startSentrySystem() {
+        // MJPEG Servisini başlat
+        Intent serviceIntent = new Intent(this, MjpegServerService.class);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(serviceIntent);
+        } else {
+            startService(serviceIntent);
+        }
+
+        // Cihazın IP adresini al ve Firebase'e doğrudan ilet
         String ipAddress = getIPAddress(true);
         if (!ipAddress.isEmpty()) {
             String baseUrl = "http://" + ipAddress + ":8080/";
